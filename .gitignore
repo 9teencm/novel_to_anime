@@ -1,0 +1,25 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+.env
+*.egg-info/
+venv/
+.venv/
+
+# 後端資料（生成的分鏡/影片）
+backend/data/
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+
+# ComfyUI（尚未完成）
+backend/crew/comfyui_gen.py
+wan_i2v_workflow.json
+
+# 文件
+*.docx
+
+# 系統
+.DS_Store
+Thumbs.db

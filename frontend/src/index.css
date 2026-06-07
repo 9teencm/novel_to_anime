@@ -1,0 +1,293 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #07080a;
+  --bg-secondary: #0f1115;
+  --bg-tertiary: #171923;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: #00f2fe;
+  
+  --color-cyan: #00f2fe;
+  --color-purple: #9d4edd;
+  --color-green: #390099;
+  --color-emerald: #06d6a0;
+  --color-gold: #ffb703;
+  --color-red: #ff0054;
+  --text-main: #f1f3f5;
+  --text-muted: #868e96;
+  
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+  
+  --panel-blur: 16px;
+  --panel-bg: rgba(15, 17, 21, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  overflow-y: auto; /* 允許網頁向下捲動，避免元件擠壓 */
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Blueprint Grid Background */
+.blueprint-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.02) 1px, transparent 1px),
+    linear-gradient(rgba(157, 78, 221, 0.01) 10px, transparent 10px),
+    linear-gradient(90deg, rgba(157, 78, 221, 0.01) 10px, transparent 10px);
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+  background-color: var(--bg-primary);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cyan);
+}
+
+/* App Container Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  padding-bottom: 60px; /* 底部留白 */
+}
+
+/* Glassmorphism Panel */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(0, 242, 254, 0.15);
+}
+
+/* 新的流式版面架構 (Scrollable Stack Layout) */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  max-width: 1400px;
+  min-width: 1100px;
+  width: 1400px;
+  margin: 0 auto;
+}
+
+/* 第一區塊：小說輸入 + 角色資料庫 (左右對稱雙欄) */
+.section-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .section-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 第二區塊：雙分頁主工作區 + 側邊 Inspector */
+.section-workspace {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .section-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 側邊 Inspector 屬性面板設為 Sticky 釘住釘牢 */
+.sticky-inspector {
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 120px);
+  max-height: 760px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1000px) {
+  .sticky-inspector {
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* 第三區塊：終端機日誌 */
+.section-console {
+  width: 100%;
+  height: 280px;
+}
+
+/* Tab controls */
+.tabs-header {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: var(--color-cyan);
+  color: var(--color-cyan);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 242, 254, 0.2);
+    border-color: rgba(0, 242, 254, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+    border-color: rgba(0, 242, 254, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(0, 242, 254, 0.2);
+    border-color: rgba(0, 242, 254, 0.3);
+  }
+}
+
+.pulse-active {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-cyan), transparent);
+  animation: scan-line 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Buttons and Inputs */
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-cyan), var(--color-purple));
+  color: #000;
+  border: none;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  background: var(--border-color);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-muted);
+}
+
+.input-field {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-main);
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-cyan);
+}
