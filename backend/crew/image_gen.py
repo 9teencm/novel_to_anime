@@ -118,11 +118,33 @@ def generate_image(
     aspect_ratio: str = "16:9",
     force_regenerate: bool = False,
 ) -> Tuple[bool, str]:
-    """Generate a scene image via HF API. Returns (success, file_path_or_error)."""
+    """
+    生成場景分鏡圖。
+    優先順序：ComfyUI SDXL（本地 GPU）→ HF FLUX.1-schnell → HF SDXL
+    """
     filepath = _images_dir(novel_id) / f"scene_{scene_id:03d}.png"
     if filepath.exists() and not force_regenerate:
         return True, str(filepath)
 
+    # 1. 嘗試本地 ComfyUI SDXL
+    try:
+        from backend.crew.comfyui_sdxl_gen import generate_image_comfyui, is_comfyui_available
+        if is_comfyui_available():
+            ok, result = generate_image_comfyui(
+                novel_id=novel_id,
+                scene_id=scene_id,
+                prompt=prompt,
+                negative_prompt=negative_prompt or "bad quality, blurry, watermark, distorted",
+                aspect_ratio=aspect_ratio,
+                force_regenerate=force_regenerate,
+            )
+            if ok:
+                return True, result
+            print(f"[image_gen] ComfyUI SDXL 失敗：{result}，改用 HF API")
+    except Exception as e:
+        print(f"[image_gen] ComfyUI SDXL 例外：{e}，改用 HF API")
+
+    # 2. Fallback：HF API（FLUX.1-schnell → SDXL）
     dimensions = {"16:9": (1024, 576), "9:16": (576, 1024), "1:1": (768, 768)}
     width, height = dimensions.get(aspect_ratio, (1024, 576))
     return _hf_generate(prompt, filepath, width, height, negative_prompt)

@@ -272,6 +272,83 @@ def _try_unlink(path: Path):
         pass
 
 
+def _get_video_duration(video_path: str) -> float:
+    """用 ffprobe 取得影片實際秒數，失敗回傳預設 3.06s（49幀@16fps）。"""
+    ffmpeg_bin = _find_ffmpeg()
+    ffprobe_bin = ffmpeg_bin.replace("ffmpeg", "ffprobe")
+    try:
+        result = subprocess.run(
+            [ffprobe_bin, "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+            capture_output=True, encoding="utf-8", timeout=10,
+        )
+        return float(result.stdout.strip())
+    except Exception:
+        return 3.0625  # 49 frames @ 16fps
+
+
+def _burn_subtitles_on_video(
+    video_path: Path,
+    narration: str,
+    dialogues: list,
+) -> Tuple[bool, str]:
+    """
+    在已生成的影片上疊加 ASS 字幕（後處理）。
+    字幕時序會自動縮放到影片實際長度。
+    """
+    if not narration and not dialogues:
+        return True, str(video_path)
+
+    duration = _get_video_duration(str(video_path))
+    ass_path = video_path.with_suffix(".ass")
+    tmp_path = video_path.with_stem(video_path.stem + "_sub")
+    fonts_dir = r"C:\Windows\Fonts"
+    ffmpeg_bin = _find_ffmpeg()
+
+    try:
+        ass_content = _build_ass(narration, dialogues, duration)
+        ass_path.write_text(ass_content, encoding="utf-8")
+        ass_esc = str(ass_path).replace("\\", "/").replace(":", "\\:")
+
+        if Path(fonts_dir).exists():
+            fd_esc = fonts_dir.replace("\\", "/").replace(":", "\\:")
+            vf = f"subtitles='{ass_esc}:fontsdir={fd_esc}'"
+        else:
+            vf = f"subtitles='{ass_esc}'"
+
+        cmd = [
+            ffmpeg_bin, "-y",
+            "-i", str(video_path),
+            "-vf", vf,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-preset", "fast", "-crf", "19",
+            "-c:a", "copy",
+            str(tmp_path),
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=120,
+                                encoding="utf-8", errors="ignore")
+        ok = (result.returncode == 0
+              and tmp_path.exists()
+              and tmp_path.stat().st_size > 1000)
+        if ok:
+            video_path.unlink()
+            tmp_path.rename(video_path)
+            return True, str(video_path)
+
+        stderr = result.stderr or ""
+        # 字幕濾鏡失敗就保留原始影片
+        if any(k in stderr.lower() for k in ("subtitles", "ass", "font")):
+            print(f"[video_gen] 字幕疊加失敗，保留原始影片: {stderr[-300:]}")
+            return True, str(video_path)
+        return False, f"字幕疊加 FFmpeg 錯誤: {stderr[-300:]}"
+
+    except Exception as e:
+        return True, str(video_path)  # 疊加失敗就保留原始影片
+    finally:
+        _try_unlink(ass_path)
+        _try_unlink(tmp_path)
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_scene_video(
@@ -284,8 +361,8 @@ def generate_scene_video(
     dialogues: list = None,
 ) -> Tuple[bool, str]:
     """
-    Render a Ken Burns MP4 for one scene.
-    Duration is dynamically calculated from narration + dialogue lines.
+    生成場景影片。
+    優先順序：ComfyUI Wan2.1-I2V（本地 GPU）→ Ken Burns FFmpeg（本地）
     Returns (success, file_path_or_error).
     """
     if dialogues is None:
@@ -298,8 +375,27 @@ def generate_scene_video(
     if not storyboard_image_path or not Path(storyboard_image_path).exists():
         return False, "找不到分鏡圖，請先在「分鏡時間軸」生成分鏡圖"
 
-    duration = _calc_duration(narration, dialogues)
+    # 1. 嘗試 ComfyUI Wan2.1-I2V（本地 GPU）
+    try:
+        from backend.crew.comfyui_gen import generate_video_comfyui, is_comfyui_available
+        if is_comfyui_available():
+            ok, result = generate_video_comfyui(
+                novel_id=novel_id,
+                scene_id=scene_id,
+                image_path=storyboard_image_path,
+                prompt=prompt or "anime scene, smooth camera motion, cinematic, high quality",
+                force_regenerate=force_regenerate,
+            )
+            if ok:
+                print(f"[video_gen] 場景 {scene_id} 使用 ComfyUI I2V 生成完成，疊加字幕...")
+                _burn_subtitles_on_video(Path(result), narration, dialogues)
+                return True, result
+            print(f"[video_gen] ComfyUI I2V 失敗：{result}，改用 Ken Burns")
+    except Exception as e:
+        print(f"[video_gen] ComfyUI I2V 例外：{e}，改用 Ken Burns")
 
+    # 2. Fallback：Ken Burns + 字幕
+    duration = _calc_duration(narration, dialogues)
     return _ken_burns_with_subtitles(
         image_path=storyboard_image_path,
         output_path=save_path,
